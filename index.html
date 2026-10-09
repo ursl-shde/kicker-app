@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kicker Auslosung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F3EC;
+    --surface:#FFFFFF;
+    --surface-2:#E9ECE2;
+    --ink:#1B2420;
+    --ink-soft:rgba(27,36,32,.62);
+    --ink-faint:rgba(27,36,32,.38);
+    --line:rgba(27,36,32,.14);
+    --teamA:#B96A1F;
+    --teamA-soft:#F1DCC0;
+    --teamA-ink:#3D2508;
+    --teamB:#1F6E8C;
+    --teamB-soft:#D6E7EC;
+    --teamB-ink:#0C2C38;
+    --accent:#4F7942;
+    --accent-ink:#F4F7EF;
+    --danger:#A6432A;
+    --danger-soft:#F1DAD2;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Manrope',sans-serif;
+    box-sizing:border-box;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141C16;
+      --surface:#1D2620;
+      --surface-2:#242F27;
+      --ink:#ECEFE7;
+      --ink-soft:rgba(236,239,231,.66);
+      --ink-faint:rgba(236,239,231,.4);
+      --line:rgba(236,239,231,.14);
+      --teamA:#E0A050;
+      --teamA-soft:rgba(224,160,80,.18);
+      --teamA-ink:#3D2508;
+      --teamB:#5FAFCB;
+      --teamB-soft:rgba(95,175,203,.18);
+      --teamB-ink:#0C2C38;
+      --accent:#7CB342;
+      --accent-ink:#12200E;
+      --danger:#E0836A;
+      --danger-soft:rgba(224,131,106,.18);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141C16;
+    --surface:#1D2620;
+    --surface-2:#242F27;
+    --ink:#ECEFE7;
+    --ink-soft:rgba(236,239,231,.66);
+    --ink-faint:rgba(236,239,231,.4);
+    --line:rgba(236,239,231,.14);
+    --teamA:#E0A050;
+    --teamA-soft:rgba(224,160,80,.18);
+    --teamA-ink:#3D2508;
+    --teamB:#5FAFCB;
+    --teamB-soft:rgba(95,175,203,.18);
+    --teamB-ink:#0C2C38;
+    --accent:#7CB342;
+    --accent-ink:#12200E;
+    --danger:#E0836A;
+    --danger-soft:rgba(224,131,106,.18);
+  }
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  *{box-sizing:border-box;min-width:0;}
+  body{
+    margin:0;
+    width:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-.01em;}
+  button{font-family:var(--font-body);}
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    position:relative;
+  }
+  .topbar{
+    flex:0 0 auto;
+    padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:6px 8px;
+  }
+  .topbar h1{font-size:clamp(1.05rem,5vw,1.28rem);font-weight:700;flex-shrink:1;}
+  .topbar .session-pill{
+    font-size:.72rem;
+    color:var(--ink-soft);
+    background:var(--surface-2);
+    padding:4px 10px;
+    border-radius:999px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  main{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding:0 16px 20px;
+  }
+  .view{display:none;}
+  .view.active{display:block;animation:fadein .18s ease;}
+  @keyframes fadein{from{opacity:0;}to{opacity:1;}}
+
+  /* Match card */
+  .match-card{
+    background:var(--surface);
+    border-radius:var(--radius-lg);
+    border:1px solid var(--line);
+    overflow:hidden;
+    margin-bottom:16px;
+  }
+  .match-teams{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .team-panel{padding:16px 14px;position:relative;}
+  .team-panel.teamA{background:var(--teamA-soft);}
+  .team-panel.teamB{background:var(--teamB-soft);}
+  .team-label{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:.78rem;
+    text-transform:none;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .team-panel.teamA .team-label{color:var(--teamA-ink);}
+  .team-panel.teamB .team-label{color:var(--teamB-ink);}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .team-panel.teamA .dot{background:var(--teamA);}
+  .team-panel.teamB .dot{background:var(--teamB);}
+  .slot{margin-bottom:10px;}
+  .slot:last-child{margin-bottom:0;}
+  .slot-role{font-size:.68rem;color:var(--ink-faint);margin-bottom:2px;}
+  .slot-name{font-weight:600;font-size:.98rem;}
+  .slot select{
+    display:block;
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:16px;
+    padding:6px 4px;
+    border:none;
+    background:transparent;
+    color:var(--ink);
+    appearance:none;
+    -webkit-appearance:none;
+    border-bottom:1px solid var(--line);
+  }
+  .match-vs{
+    text-align:center;
+    font-family:var(--font-display);
+    font-size:.72rem;
+    color:var(--ink-faint);
+    padding:6px 0;
+    background:var(--surface);
+  }
+  .match-actions{
+    display:flex;
+    gap:8px;
+    padding:12px 14px 14px;
+    border-top:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+
+  /* Buttons */
+  .btn{
+    border:none;
+    border-radius:12px;
+    padding:12px 16px;
+    font-weight:700;
+    font-size:.92rem;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    flex:1;
+  }
+  .btn-primary{background:var(--accent);color:var(--accent-ink);}
+  .btn-secondary{background:var(--surface-2);color:var(--ink);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn-danger{background:var(--danger-soft);color:var(--danger);}
+  .btn-small{padding:8px 12px;font-size:.8rem;flex:none;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-block{width:100%;}
+
+  /* Sections */
+  .section-title{
+    font-size:.72rem;
+    font-weight:700;
+    color:var(--ink-faint);
+    margin:22px 0 10px;
+  }
+  .waiting-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  .chip{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 13px;
+    font-size:.86rem;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    cursor:pointer;
+    color:var(--ink);
+    max-width:100%;
+    overflow-wrap:anywhere;
+  }
+  .chip .n{color:var(--ink-faint);font-weight:500;font-size:.76rem;}
+  .chip.present{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .chip.present .n{color:var(--accent-ink);opacity:.75;}
+
+  .empty-state{
+    text-align:center;
+    padding:40px 16px;
+    color:var(--ink-soft);
+  }
+  .empty-state h3{margin-bottom:6px;font-size:1.05rem;}
+  .empty-state p{font-size:.88rem;margin:0;}
+
+  /* Player list */
+  .player-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .player-row input[type=text]{
+    flex:1;
+    border:none;
+    background:transparent;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:16px;
+    color:var(--ink);
+    padding:4px 0;
+  }
+  .player-row input[type=text]:focus{outline:none;border-bottom:1px solid var(--accent);}
+  .icon-btn{
+    background:none;border:none;cursor:pointer;
+    color:var(--ink-faint);
+    font-size:1rem;
+    padding:6px;
+    line-height:1;
+  }
+  .icon-btn.danger{color:var(--danger);}
+  .add-player-row{display:flex;gap:8px;margin-top:14px;}
+  .add-player-row input{
+    flex:1;
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:11px 13px;
+    font-family:var(--font-body);
+    font-size:16px;
+    background:var(--surface);
+    color:var(--ink);
+  }
+
+  /* History */
+  .history-entry{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .history-meta{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:.72rem;color:var(--ink-faint);margin-bottom:8px;
+  }
+  .history-teams{display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:600;}
+  .history-teams .vs{color:var(--ink-faint);font-weight:500;font-size:.76rem;}
+  .history-teams .tA{color:var(--teamA);}
+  .history-teams .tB{color:var(--teamB);}
+  .history-teams .pos{color:var(--ink-faint);font-weight:500;font-size:.78rem;}
+
+  /* Settings */
+  .settings-row{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .settings-row label{display:block;font-weight:700;font-size:.86rem;margin-bottom:4px;}
+  .settings-row p{margin:0 0 10px;font-size:.8rem;color:var(--ink-soft);}
+  .settings-row input[type=number]{
+    width:80px;border:1px solid var(--line);border-radius:8px;
+    padding:7px 9px;font-family:var(--font-body);font-size:16px;background:var(--bg);color:var(--ink);
+  }
+  .settings-actions{display:flex;gap:8px;}
+
+  /* Tab bar */
+  .tabbar{
+    flex:0 0 auto;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .tabbar button{
+    flex:1;background:none;border:none;cursor:pointer;
+    padding:11px 4px 9px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:var(--ink-faint);
+    font-size:.68rem;
+    font-weight:600;
+  }
+  .tabbar button .ic{font-size:1.18rem;}
+  .tabbar button.active{color:var(--accent);}
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.45);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  .modal-backdrop.hidden{display:none;}
+  .modal{
+    background:var(--surface);
+    width:100%;max-width:480px;
+    border-radius:20px 20px 0 0;
+    padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));
+  }
+  .modal h3{margin-bottom:8px;}
+  .modal p{color:var(--ink-soft);font-size:.9rem;margin:0 0 18px;}
+  .modal .row{display:flex;gap:10px;}
+  .toast{
+    position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%);
+    background:var(--ink);color:var(--bg);
+    padding:10px 16px;border-radius:999px;
+    font-size:.82rem;font-weight:600;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;
+    z-index:60;white-space:nowrap;
+  }
+  .toast.show{opacity:1;}
+  .note{font-size:.78rem;color:var(--ink-faint);margin-top:10px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <h1>⚽ Kicker Auslosung</h1>
+    <div class="session-pill" id="sessionPill"></div>
+  </header>
+  <main id="views">
+    <section class="view active" id="view-draw"></section>
+    <section class="view" id="view-players"></section>
+    <section class="view" id="view-history"></section>
+    <section class="view" id="view-settings"></section>
+  </main>
+  <nav class="tabbar">
+    <button data-view="draw" class="active"><span class="ic">🎲</span>Auslosen</button>
+    <button data-view="players"><span class="ic">👥</span>Spieler</button>
+    <button data-view="history"><span class="ic">📜</span>Verlauf</button>
+    <button data-view="settings"><span class="ic">⚙️</span>Mehr</button>
+  </nav>
+</div>
+
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div class="row">
+      <button class="btn btn-ghost" id="modalCancel">Abbrechen</button>
+      <button class="btn btn-danger" id="modalConfirm">Bestätigen</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json" style="display:none">
+
+<script>
+/* ---------- State ---------- */
+const STORAGE_KEY = 'kicker_lose_state_v1';
+
+function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function defaultState(){
+  return {
+    version: 1,
+    players: [],
+    presentIds: [],
+    session: { id: uid(), startedAt: Date.now() },
+    pendingRound: null,
+    history: [],
+    settings: { positionStreakLimit: 3 }
+  };
+}
+
+let state = loadState();
+let activeView = 'draw';
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultState(), parsed);
+  }catch(e){
+    console.error('Konnte gespeicherte Daten nicht laden', e);
+    return defaultState();
+  }
+}
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('Speichern fehlgeschlagen', e);
+    showToast('Speichern fehlgeschlagen – Speicher evtl. voll');
+  }
+}
+
+/* ---------- Helpers ---------- */
+function playerName(id){
+  const p = state.players.find(pl=>pl.id===id);
+  return p ? p.name : '—';
+}
+function presentPlayers(){
+  return state.presentIds.filter(id=>state.players.some(p=>p.id===id));
+}
+function opposite(pos){ return pos==='tor' ? 'sturm' : 'tor'; }
+
+function entryHasPlayer(h, id){
+  return h.teamA.tor===id || h.teamA.sturm===id || h.teamB.tor===id || h.teamB.sturm===id;
+}
+function positionOfPlayerInEntry(h, id){
+  if(h.teamA.tor===id) return 'tor';
+  if(h.teamA.sturm===id) return 'sturm';
+  if(h.teamB.tor===id) return 'tor';
+  if(h.teamB.sturm===id) return 'sturm';
+  return null;
+}
+function sessionRoundCount(id){
+  return state.history.filter(h=>h.sessionId===state.session.id && entryHasPlayer(h,id)).length;
+}
+function pairTeammateCount(idA, idB){
+  let count=0;
+  state.history.forEach(h=>{
+    const a=[h.teamA.tor,h.teamA.sturm], b=[h.teamB.tor,h.teamB.sturm];
+    if((a.includes(idA)&&a.includes(idB)) || (b.includes(idA)&&b.includes(idB))) count++;
+  });
+  return count;
+}
+function positionStreak(id){
+  const entries = state.history
+    .filter(h=>entryHasPlayer(h,id))
+    .slice()
+    .sort((a,b)=>b.timestamp-a.timestamp);
+  if(!entries.length) return null;
+  const lastPos = positionOfPlayerInEntry(entries[0], id);
+  let streak=1;
+  for(let i=1;i<entries.length;i++){
+    if(positionOfPlayerInEntry(entries[i], id)===lastPos) streak++; else break;
+  }
+  return { position:lastPos, streak };
+}
+function shuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function weightedPick(items, weights){
+  const total = weights.reduce((s,w)=>s+w,0);
+  let r = Math.random()*total;
+  for(let i=0;i<items.length;i++){
+    r -= weights[i];
+    if(r<=0) return items[i];
+  }
+  return items[items.length-1];
+}
+
+/* ---------- Draw logic ---------- */
+function pickFour(present){
+  const withCounts = present.map(id=>({id, count: sessionRoundCount(id)}));
+  const shuffled = shuffle(withCounts);
+  shuffled.sort((a,b)=>a.count-b.count);
+  return {
+    selected: shuffled.slice(0,4).map(c=>c.id),
+    waiting: shuffled.slice(4).map(c=>c.id)
+  };
+}
+function splitIntoTeams(fourIds){
+  const [a,b,c,d] = fourIds;
+  const splits = [ [[a,b],[c,d]], [[a,c],[b,d]], [[a,d],[b,c]] ];
+  const weights = splits.map(([t1,t2]) => 1 / (1 + pairTeammateCount(t1[0],t1[1]) + pairTeammateCount(t2[0],t2[1])));
+  const chosen = weightedPick(splits, weights);
+  return Math.random() < 0.5 ? chosen : [chosen[1], chosen[0]];
+}
+function assignPositions(pair){
+  const [p1,p2] = pair;
+  const limit = state.settings.positionStreakLimit || 3;
+  const s1 = positionStreak(p1), s2 = positionStreak(p2);
+  const forced1 = (s1 && s1.streak >= limit) ? opposite(s1.position) : null;
+  const forced2 = (s2 && s2.streak >= limit) ? opposite(s2.position) : null;
+  let pos1, pos2;
+  if(forced1 && forced2){
+    if(forced1 !== forced2){ pos1=forced1; pos2=forced2; }
+    else if(s1.streak >= s2.streak){ pos1=forced1; pos2=opposite(forced1); }
+    else { pos2=forced2; pos1=opposite(forced2); }
+  } else if(forced1){ pos1=forced1; pos2=opposite(forced1); }
+  else if(forced2){ pos2=forced2; pos1=opposite(forced2); }
+  else { pos1 = Math.random()<0.5 ? 'tor' : 'sturm'; pos2 = opposite(pos1); }
+  return { tor: pos1==='tor'?p1:p2, sturm: pos1==='sturm'?p1:p2 };
+}
+function generateRound(){
+  const present = presentPlayers();
+  if(present.length < 4) return null;
+  const { selected } = pickFour(present);
+  const [pairA, pairB] = splitIntoTeams(selected);
+  return {
+    teamA: assignPositions(pairA),
+    teamB: assignPositions(pairB),
+    mode: 'draw'
+  };
+}
+
+/* ---------- Actions ---------- */
+function doDraw(){
+  const round = generateRound();
+  if(!round){ showToast('Mindestens 4 anwesende Spieler nötig'); return; }
+  state.pendingRound = round;
+  saveState(); render();
+}
+function doRevanche(){
+  const last = state.history.slice().sort((a,b)=>b.timestamp-a.timestamp)[0];
+  if(!last){ showToast('Noch keine Runde gespielt'); return; }
+  const ids = [last.teamA.tor,last.teamA.sturm,last.teamB.tor,last.teamB.sturm];
+  const present = presentPlayers();
+  if(!ids.every(id=>present.includes(id))){
+    showToast('Nicht alle Spieler von damals sind heute anwesend');
+    return;
+  }
+  state.pendingRound = {
+    teamA: { tor:last.teamA.tor, sturm:last.teamA.sturm },
+    teamB: { tor:last.teamB.tor, sturm:last.teamB.sturm },
+    mode: 'revanche'
+  };
+  saveState(); render();
+}
+function doManual(){
+  const present = presentPlayers();
+  if(present.length < 4){ showToast('Mindestens 4 anwesende Spieler nötig'); return; }
+  const four = shuffle(present).slice(0,4);
+  state.pendingRound = {
+    teamA: { tor: four[0], sturm: four[1] },
+    teamB: { tor: four[2], sturm: four[3] },
+    mode: 'manual'
+  };
+  saveState(); render();
+}
+function confirmRound(){
+  if(!state.pendingRound) return;
+  state.history.push(Object.assign({
+    id: uid(),
+    sessionId: state.session.id,
+    timestamp: Date.now()
+  }, state.pendingRound));
+  state.pendingRound = null;
+  saveState(); render();
+  showToast('Runde gespeichert');
+}
+function discardRound(){
+  state.pendingRound = null;
+  saveState(); render();
+}
+function swapTeamPositions(teamKey){
+  if(!state.pendingRound) return;
+  const t = state.pendingRound[teamKey];
+  const tmp = t.tor; t.tor = t.sturm; t.sturm = tmp;
+  saveState(); render();
+}
+function setSlot(teamKey, posKey, newId){
+  if(!state.pendingRound) return;
+  const round = state.pendingRound;
+  const oldId = round[teamKey][posKey];
+  if(newId === oldId) return;
+  let swapAt = null;
+  ['teamA','teamB'].forEach(tk=>['tor','sturm'].forEach(pk=>{
+    if(!(tk===teamKey && pk===posKey) && round[tk][pk]===newId) swapAt = {tk,pk};
+  }));
+  if(swapAt) round[swapAt.tk][swapAt.pk] = oldId;
+  round[teamKey][posKey] = newId;
+  saveState(); render();
+}
+function togglePresent(id){
+  const idx = state.presentIds.indexOf(id);
+  if(idx>=0) state.presentIds.splice(idx,1);
+  else state.presentIds.push(id);
+  saveState(); render();
+}
+function addPlayer(name){
+  name = name.trim();
+  if(!name) return;
+  const p = { id: uid(), name };
+  state.players.push(p);
+  state.presentIds.push(p.id);
+  saveState(); render();
+}
+function renamePlayer(id, name){
+  const p = state.players.find(pl=>pl.id===id);
+  if(p){ p.name = name; saveState(); }
+}
+function deletePlayer(id){
+  state.players = state.players.filter(p=>p.id!==id);
+  state.presentIds = state.presentIds.filter(pid=>pid!==id);
+  saveState(); render();
+}
+function deleteHistoryEntry(id){
+  state.history = state.history.filter(h=>h.id!==id);
+  saveState(); render();
+}
+function resetSession(){
+  state.session = { id: uid(), startedAt: Date.now() };
+  state.pendingRound = null;
+  saveState(); render();
+  showToast('Session zurückgesetzt');
+}
+function resetAll(){
+  state = defaultState();
+  saveState(); render();
+  showToast('Alle Daten gelöscht');
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = 'kicker-daten-' + d.toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.players || !parsed.history) throw new Error('invalid');
+      state = Object.assign(defaultState(), parsed);
+      saveState(); render();
+      showToast('Daten importiert');
+    }catch(e){
+      showToast('Import fehlgeschlagen – ungültige Datei');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Modal / toast ---------- */
+let modalConfirmCb = null;
+function openModal(title, text, onConfirm){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  document.getElementById('modalBackdrop').classList.remove('hidden');
+  modalConfirmCb = onConfirm;
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').classList.add('hidden');
+  modalConfirmCb = null;
+}
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  document.getElementById('sessionPill').textContent =
+    presentPlayers().length + ' anwesend · ' + sessionRoundNumber() + '. Runde heute';
+  renderDraw();
+  renderPlayers();
+  renderHistory();
+  renderSettings();
+}
+function sessionRoundNumber(){
+  return state.history.filter(h=>h.sessionId===state.session.id).length + (state.pendingRound?1:0);
+}
+
+function whereIsPlayer(round, id){
+  if(round.teamA.tor===id) return 'Team A · Tor';
+  if(round.teamA.sturm===id) return 'Team A · Sturm';
+  if(round.teamB.tor===id) return 'Team B · Tor';
+  if(round.teamB.sturm===id) return 'Team B · Sturm';
+  return null;
+}
+function teamOptionsHTML(teamKey, posKey){
+  const round = state.pendingRound;
+  const current = round[teamKey][posKey];
+  const options = presentPlayers().slice().sort((a,b)=>playerName(a).localeCompare(playerName(b),'de'));
+  return options
+    .map(id=>{
+      let label = playerName(id);
+      if(id!==current){
+        const loc = whereIsPlayer(round, id);
+        if(loc) label += ' — tauscht mit ' + loc;
+      }
+      return `<option value="${id}" ${id===current?'selected':''}>${escapeHtml(label)}</option>`;
+    })
+    .join('');
+}
+
+function renderDraw(){
+  const el = document.getElementById('view-draw');
+  const present = presentPlayers();
+
+  if(state.players.length === 0){
+    el.innerHTML = emptyState('Noch keine Spieler', 'Leg zuerst eure Stammspieler im Tab „Spieler“ an.');
+    return;
+  }
+  if(present.length < 4){
+    el.innerHTML = `
+      ${presenceChips(present)}
+      ${emptyState('Zu wenig Spieler anwesend', 'Markiert mindestens 4 Spieler als anwesend, um auszulosen.')}
+    `;
+    attachChipHandlers();
+    return;
+  }
+
+  let html = presenceChips(present);
+
+  if(state.pendingRound){
+    const r = state.pendingRound;
+    const usedIds = [r.teamA.tor,r.teamA.sturm,r.teamB.tor,r.teamB.sturm];
+    const waiting = present.filter(id=>!usedIds.includes(id));
+    html += `
+      <div class="match-card">
+        <div class="match-teams">
+          ${teamPanelEditable('teamA','Team A')}
+          ${teamPanelEditable('teamB','Team B')}
+        </div>
+        <div class="match-vs">🔁 Position tauschen &nbsp;·&nbsp; Namen antippen zum Ändern</div>
+        <div class="match-actions">
+          <button class="btn btn-secondary btn-small" data-action="swapA">🔁 Team A</button>
+          <button class="btn btn-secondary btn-small" data-action="swapB">🔁 Team B</button>
+          <button class="btn btn-ghost btn-small" data-action="discard">✕ Verwerfen</button>
+          <button class="btn btn-primary btn-block" data-action="confirm">✓ Bestätigen &amp; speichern</button>
+        </div>
+      </div>
+      ${waiting.length ? waitingSection(waiting) : ''}
+    `;
+  } else {
+    const last = state.history.slice().sort((a,b)=>b.timestamp-a.timestamp)[0];
+    html += `
+      <div class="match-card">
+        <div class="match-teams">${lastRoundOrPrompt(last)}</div>
+        <div class="match-actions">
+          <button class="btn btn-primary btn-block" data-action="draw">🎲 Auslosen</button>
+        </div>
+        <div class="match-actions" style="padding-top:0;border-top:none;">
+          <button class="btn btn-ghost btn-small" data-action="revanche">↻ Revanche</button>
+          <button class="btn btn-ghost btn-small" data-action="manual">✎ Eigene Kombination</button>
+        </div>
+      </div>
+    `;
+  }
+  el.innerHTML = html;
+  attachChipHandlers();
+  attachDrawHandlers();
+}
+
+function lastRoundOrPrompt(last){
+  if(!last){
+    return `<div style="padding:20px;color:var(--ink-soft);font-size:.88rem;grid-column:1/-1;text-align:center;">Noch keine Runde gespielt heute.</div>`;
+  }
+  return `
+    <div class="team-panel teamA">
+      <div class="team-label"><span class="dot"></span>Team A</div>
+      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamA.tor))}</div></div>
+      <div class="slot"><div class="slot-role">Sturm</div><div class="slot-name">${escapeHtml(playerName(last.teamA.sturm))}</div></div>
+    </div>
+    <div class="team-panel teamB">
+      <div class="team-label"><span class="dot"></span>Team B</div>
+      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamB.tor))}</div></div>
+      <div class="slot"><div class="slot-role">Sturm</div><div class="slot-name">${escapeHtml(playerName(last.teamB.sturm))}</div></div>
+    </div>
+  `;
+}
+
+function teamPanelEditable(teamKey, label){
+  return `
+    <div class="team-panel ${teamKey==='teamA'?'teamA':'teamB'}">
+      <div class="team-label"><span class="dot"></span>${label}</div>
+      <div class="slot">
+        <div class="slot-role">Tor</div>
+        <select data-team="${teamKey}" data-pos="tor">${teamOptionsHTML(teamKey,'tor')}</select>
+      </div>
+      <div class="slot">
+        <div class="slot-role">Sturm</div>
+        <select data-team="${teamKey}" data-pos="sturm">${teamOptionsHTML(teamKey,'sturm')}</select>
+      </div>
+    </div>
+  `;
+}
+
+function waitingSection(waiting){
+  return `
+    <div class="section-title">Pausiert diese Runde</div>
+    <div class="waiting-list">
+      ${waiting.map(id=>`<span class="chip">${escapeHtml(playerName(id))} <span class="n">${sessionRoundCount(id)}×</span></span>`).join('')}
+    </div>
+  `;
+}
+
+function presenceChips(present){
+  return `
+    <div class="section-title">Heute anwesend</div>
+    <div class="waiting-list" id="presenceChips">
+      ${state.players.map(p=>`
+        <span class="chip ${present.includes(p.id)?'present':''}" data-toggle="${p.id}">
+          ${escapeHtml(p.name)} <span class="n">${sessionRoundCount(p.id)}×</span>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function emptyState(title, text){
+  return `<div class="empty-state"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div>`;
+}
+
+function attachChipHandlers(){
+  document.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>togglePresent(el.getAttribute('data-toggle')));
+  });
+}
+function attachDrawHandlers(){
+  const map = {
+    draw: doDraw, revanche: doRevanche, manual: doManual,
+    confirm: confirmRound, discard: discardRound,
+    swapA: ()=>swapTeamPositions('teamA'), swapB: ()=>swapTeamPositions('teamB')
+  };
+  Object.keys(map).forEach(action=>{
+    document.querySelectorAll(`[data-action="${action}"]`).forEach(el=>{
+      el.addEventListener('click', map[action]);
+    });
+  });
+  document.querySelectorAll('select[data-team]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      setSlot(sel.getAttribute('data-team'), sel.getAttribute('data-pos'), sel.value);
+    });
+  });
+}
+
+function renderPlayers(){
+  const el = document.getElementById('view-players');
+  el.innerHTML = `
+    <div class="section-title">Spieler-Pool (${state.players.length})</div>
+    ${state.players.length===0 ? emptyState('Noch niemand da', 'Füge unten eure Stammspieler hinzu.') : state.players.map(p=>`
+      <div class="player-row">
+        <input type="text" value="${escapeAttr(p.name)}" data-rename="${p.id}">
+        <button class="icon-btn danger" data-delete="${p.id}" title="Löschen">🗑</button>
+      </div>
+    `).join('')}
+    <div class="add-player-row">
+      <input type="text" id="newPlayerName" placeholder="Name eingeben…">
+      <button class="btn btn-primary btn-small" id="addPlayerBtn">+ Hinzufügen</button>
+    </div>
+    <p class="note">Wer anwesend ist, stellt ihr im Tab „Auslosen“ über die Chips ein – auch mitten in der Session.</p>
+  `;
+  document.querySelectorAll('[data-rename]').forEach(inp=>{
+    inp.addEventListener('change', ()=>renamePlayer(inp.getAttribute('data-rename'), inp.value));
+  });
+  document.querySelectorAll('[data-delete]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-delete');
+      openModal('Spieler löschen?', `${playerName(id)} wird aus dem Pool entfernt. Bereits gespeicherte Runden bleiben in der Historie sichtbar.`, ()=>{
+        deletePlayer(id); closeModal();
+      });
+    });
+  });
+  const addBtn = document.getElementById('addPlayerBtn');
+  const input = document.getElementById('newPlayerName');
+  addBtn.addEventListener('click', ()=>{ addPlayer(input.value); input.value=''; });
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ addPlayer(input.value); input.value=''; } });
+}
+
+function renderHistory(){
+  const el = document.getElementById('view-history');
+  const entries = state.history.slice().sort((a,b)=>b.timestamp-a.timestamp);
+  if(entries.length===0){
+    el.innerHTML = emptyState('Noch keine Runden gespeichert', 'Bestätigte Auslosungen erscheinen hier.');
+    return;
+  }
+  el.innerHTML = `
+    <div class="section-title">Verlauf (${entries.length})</div>
+    ${entries.map(h=>`
+      <div class="history-entry">
+        <div class="history-meta">
+          <span>${formatDate(h.timestamp)} · ${modeLabel(h.mode)}</span>
+          <button class="icon-btn danger" data-hdel="${h.id}" title="Eintrag löschen">🗑</button>
+        </div>
+        <div class="history-teams">
+          <span class="tA">${escapeHtml(playerName(h.teamA.tor))} <span class="pos">(Tor)</span> / ${escapeHtml(playerName(h.teamA.sturm))} <span class="pos">(Sturm)</span></span>
+        </div>
+        <div class="history-teams" style="margin-top:2px;">
+          <span class="vs">vs.</span>
+          <span class="tB">${escapeHtml(playerName(h.teamB.tor))} <span class="pos">(Tor)</span> / ${escapeHtml(playerName(h.teamB.sturm))} <span class="pos">(Sturm)</span></span>
+        </div>
+      </div>
+    `).join('')}
+  `;
+  document.querySelectorAll('[data-hdel]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-hdel');
+      openModal('Eintrag löschen?', 'Dieser Verlaufs-Eintrag wird endgültig entfernt und fließt nicht mehr in Auslosung oder Statistik ein.', ()=>{
+        deleteHistoryEntry(id); closeModal();
+      });
+    });
+  });
+}
+function modeLabel(mode){
+  return { draw:'Auslosung', manual:'Manuell', revanche:'Revanche' }[mode] || mode;
+}
+function formatDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ' · ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderSettings(){
+  const el = document.getElementById('view-settings');
+  el.innerHTML = `
+    <div class="section-title">Regeln</div>
+    <div class="settings-row">
+      <label for="streakLimit">Positions-Wechsel nach</label>
+      <p>Wer so oft hintereinander dieselbe Position gespielt hat, bekommt automatisch die andere zugeteilt.</p>
+      <input type="number" id="streakLimit" min="1" max="10" value="${state.settings.positionStreakLimit}"> mal
+    </div>
+
+    <div class="section-title">Session</div>
+    <div class="settings-row">
+      <p>Setzt nur die „heute gespielt“-Zähler zurück. Anwesenheit und Verlauf bleiben erhalten.</p>
+      <button class="btn btn-secondary btn-block" data-action="resetSession">Session zurücksetzen</button>
+    </div>
+
+    <div class="section-title">Daten</div>
+    <div class="settings-row">
+      <p>Sichert Spieler, Verlauf und Einstellungen als Datei – z. B. vor einem Update oder zum Übertragen auf ein anderes Gerät.</p>
+      <div class="settings-actions">
+        <button class="btn btn-secondary" id="exportBtn">⬇ Exportieren</button>
+        <button class="btn btn-secondary" id="importBtn">⬆ Importieren</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <p>Löscht Spieler, Anwesenheit, Verlauf und Einstellungen unwiderruflich.</p>
+      <button class="btn btn-danger btn-block" data-action="resetAll">Alles zurücksetzen</button>
+    </div>
+    <p class="note">Alle Daten werden nur lokal in diesem Browser auf diesem Gerät gespeichert – es gibt keine Cloud-Synchronisation.</p>
+  `;
+  document.getElementById('streakLimit').addEventListener('change', e=>{
+    const v = Math.max(1, Math.min(10, parseInt(e.target.value,10) || 3));
+    state.settings.positionStreakLimit = v;
+    saveState();
+  });
+  document.querySelector('[data-action="resetSession"]').addEventListener('click', ()=>{
+    openModal('Session zurücksetzen?', 'Die heutigen Runden-Zähler starten bei 0. Der bisherige Verlauf bleibt gespeichert.', ()=>{
+      resetSession(); closeModal();
+    });
+  });
+  document.querySelector('[data-action="resetAll"]').addEventListener('click', ()=>{
+    openModal('Wirklich alles löschen?', 'Das entfernt sämtliche Spieler, den kompletten Verlauf und alle Einstellungen unwiderruflich. Am besten vorher exportieren.', ()=>{
+      resetAll(); closeModal();
+    });
+  });
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+}
+
+/* ---------- Utils ---------- */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ---------- Nav & global handlers ---------- */
+document.querySelectorAll('.tabbar button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    activeView = btn.getAttribute('data-view');
+    document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+activeView));
+  });
+});
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+document.getElementById('modalConfirm').addEventListener('click', ()=>{ if(modalConfirmCb) modalConfirmCb(); });
+document.getElementById('importFile').addEventListener('change', e=>{
+  if(e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = '';
+});
+
+render();
+</script>
+</body>
+</html>
