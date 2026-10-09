@@ -204,6 +204,7 @@
     justify-content:center;
     gap:6px;
     flex:1;
+    text-decoration:none;
   }
   .btn-primary{background:var(--accent);color:var(--accent-ink);}
   .btn-secondary{background:var(--surface-2);color:var(--ink);}
@@ -989,6 +990,12 @@ function renderSettings(){
     <div class="settings-row">
       <p>Löscht Spieler, Anwesenheit, Verlauf und Einstellungen unwiderruflich.</p>
       <button class="btn btn-danger btn-block" data-action="resetAll">Alles zurücksetzen</button>
+    </div>
+
+    <div class="section-title">Über</div>
+    <div class="settings-row">
+      <p>Der Quellcode dieser App liegt auf GitHub.</p>
+      <a class="btn btn-secondary btn-block" href="https://github.com/ursl-shde/kicker-app" target="_blank" rel="noopener">GitHub-Repository öffnen ↗</a>
     </div>
     <p class="note">Alle Daten werden nur lokal in diesem Browser auf diesem Gerät gespeichert – es gibt keine Cloud-Synchronisation.</p>
   `;
