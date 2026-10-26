@@ -251,6 +251,12 @@
   .stepper.a .score{color:var(--teamA);}
   .stepper.b .score{color:var(--teamB);}
   .score-sep{min-width:1.4em;text-align:center;font-weight:700;color:var(--ink-faint);}
+  /* Very small phones: pull the two team columns closer so double-digit scores fit */
+  @media (max-width:359px){
+    .team-controls{column-gap:4px;padding:12px 10px;}
+    .score-sep{min-width:1em;}
+    .stepper button{width:38px;}
+  }
   .match-vs{
     text-align:center;
     font-family:var(--font-display);
