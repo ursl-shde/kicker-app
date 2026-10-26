@@ -156,7 +156,7 @@
   .slot{margin-bottom:10px;}
   .slot:last-child{margin-bottom:0;}
   .slot-role{font-size:.68rem;color:var(--ink-faint);margin-bottom:2px;}
-  .slot-name{font-weight:600;font-size:.98rem;}
+  .slot-name{font-weight:600;font-size:.98rem;overflow-wrap:anywhere;}
   .slot select{
     display:block;
     width:100%;
@@ -232,7 +232,7 @@
   .chip{
     background:var(--surface);
     border:1px solid var(--line);
-    border-radius:999px;
+    border-radius:18px;
     padding:8px 13px;
     font-size:.86rem;
     font-weight:600;
@@ -244,7 +244,7 @@
     max-width:100%;
     overflow-wrap:anywhere;
   }
-  .chip .n{color:var(--ink-faint);font-weight:500;font-size:.76rem;}
+  .chip .n{flex:none;white-space:nowrap;color:var(--ink-faint);font-weight:500;font-size:.76rem;}
   .chip.present{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
   .chip.present .n{color:var(--accent-ink);opacity:.75;}
 
@@ -313,7 +313,8 @@
     font-size:.72rem;color:var(--ink-faint);margin-bottom:8px;
   }
   .history-teams{display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:600;}
-  .history-teams .vs{color:var(--ink-faint);font-weight:500;font-size:.76rem;}
+  .history-teams > span{min-width:0;overflow-wrap:anywhere;}
+  .history-teams .vs{flex:none;color:var(--ink-faint);font-weight:500;font-size:.76rem;}
   .history-teams .tA{color:var(--teamA);}
   .history-teams .tB{color:var(--teamB);}
   .history-teams .pos{color:var(--ink-faint);font-weight:500;font-size:.78rem;}
@@ -367,7 +368,7 @@
     padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));
   }
   .modal h3{margin-bottom:8px;}
-  .modal p{color:var(--ink-soft);font-size:.9rem;margin:0 0 18px;}
+  .modal p{color:var(--ink-soft);font-size:.9rem;margin:0 0 18px;overflow-wrap:anywhere;}
   .modal .row{display:flex;gap:10px;}
   .toast{
     position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
@@ -418,6 +419,7 @@
 <script>
 /* ---------- State ---------- */
 const STORAGE_KEY = 'kicker_lose_state_v1';
+const MAX_NAME_LENGTH = 24;
 
 function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
@@ -648,7 +650,8 @@ function addPlayer(name){
 }
 function renamePlayer(id, name){
   const p = state.players.find(pl=>pl.id===id);
-  if(p){ p.name = name; saveState(); }
+  name = name.trim();
+  if(p && name){ p.name = name; saveState(); }
 }
 function deletePlayer(id){
   state.players = state.players.filter(p=>p.id!==id);
@@ -903,18 +906,22 @@ function renderPlayers(){
     <div class="section-title">Spieler-Pool (${state.players.length})</div>
     ${state.players.length===0 ? emptyState('Noch niemand da', 'Füge unten eure Stammspieler hinzu.') : state.players.map(p=>`
       <div class="player-row">
-        <input type="text" value="${escapeAttr(p.name)}" data-rename="${p.id}">
+        <input type="text" value="${escapeAttr(p.name)}" maxlength="${MAX_NAME_LENGTH}" data-rename="${p.id}">
         <button class="icon-btn danger" data-delete="${p.id}" title="Löschen">🗑</button>
       </div>
     `).join('')}
     <div class="add-player-row">
-      <input type="text" id="newPlayerName" placeholder="Name eingeben…">
+      <input type="text" id="newPlayerName" maxlength="${MAX_NAME_LENGTH}" placeholder="Name eingeben…">
       <button class="btn btn-primary btn-small" id="addPlayerBtn">+ Hinzufügen</button>
     </div>
     <p class="note">Wer anwesend ist, stellt ihr im Tab „Auslosen“ über die Chips ein – auch mitten in der Session.</p>
   `;
   document.querySelectorAll('[data-rename]').forEach(inp=>{
-    inp.addEventListener('change', ()=>renamePlayer(inp.getAttribute('data-rename'), inp.value));
+    inp.addEventListener('change', ()=>{
+      const id = inp.getAttribute('data-rename');
+      renamePlayer(id, inp.value);
+      inp.value = playerName(id); // shows the trimmed name, or restores the old one if left empty
+    });
   });
   document.querySelectorAll('[data-delete]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
