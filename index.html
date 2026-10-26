@@ -266,6 +266,20 @@
     color:var(--ink-faint);
     margin:22px 0 10px;
   }
+  .section-toggle{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:8px;
+    width:100%;
+    background:none;
+    border:none;
+    cursor:pointer;
+    text-align:left;
+    padding:8px 0;
+    margin:14px 0 2px;
+  }
+  .section-toggle .toggle-hint{color:var(--accent);white-space:nowrap;}
   .waiting-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
   .chip{
     background:var(--surface);
@@ -806,14 +820,14 @@ function renderDraw(){
   }
   if(present.length < 4){
     el.innerHTML = `
-      ${presenceChips(present)}
+      ${presenceChips(present, false)}
       ${emptyState('Zu wenig Spieler anwesend', 'Markiert mindestens 4 Spieler als anwesend, um auszulosen.')}
     `;
     attachChipHandlers();
     return;
   }
 
-  let html = presenceChips(present);
+  let html = presenceChips(present, true);
 
   if(state.pendingRound){
     const r = state.pendingRound;
@@ -912,16 +926,26 @@ function waitingSection(waiting){
   `;
 }
 
-function presenceChips(present){
+// The chips can be hidden while enough players are present. The flag lives on
+// the session, so a new session (Session zurücksetzen) shows them again.
+function presenceChips(present, collapsible){
+  const hidden = collapsible && state.session.chipsHidden;
+  const title = `Heute anwesend · ${present.length} von ${state.players.length}`;
   return `
-    <div class="section-title">Heute anwesend</div>
-    <div class="waiting-list" id="presenceChips">
-      ${state.players.map(p=>`
-        <span class="chip ${present.includes(p.id)?'present':''}" data-toggle="${p.id}">
-          ${escapeHtml(p.name)} <span class="n">${sessionRoundCount(p.id)}×</span>
-        </span>
-      `).join('')}
-    </div>
+    ${collapsible ? `
+      <button class="section-title section-toggle" data-chips-toggle aria-expanded="${!hidden}">
+        <span>${title}</span><span class="toggle-hint">${hidden ? 'Einblenden ▾' : 'Ausblenden ▴'}</span>
+      </button>
+    ` : `<div class="section-title">${title}</div>`}
+    ${hidden ? '' : `
+      <div class="waiting-list" id="presenceChips">
+        ${state.players.map(p=>`
+          <span class="chip ${present.includes(p.id)?'present':''}" data-toggle="${p.id}">
+            ${escapeHtml(p.name)} <span class="n">${sessionRoundCount(p.id)}×</span>
+          </span>
+        `).join('')}
+      </div>
+    `}
   `;
 }
 
@@ -932,6 +956,12 @@ function emptyState(title, text){
 function attachChipHandlers(){
   document.querySelectorAll('[data-toggle]').forEach(el=>{
     el.addEventListener('click', ()=>togglePresent(el.getAttribute('data-toggle')));
+  });
+  document.querySelectorAll('[data-chips-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      state.session.chipsHidden = !state.session.chipsHidden;
+      saveState(); render();
+    });
   });
 }
 function attachDrawHandlers(){
