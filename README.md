@@ -10,22 +10,25 @@ Die App ist fürs Handy gebaut. Über „Zum Home-Bildschirm hinzufügen“ im B
 
 1. Im Tab **Spieler** eure Stammspieler anlegen.
 2. Im Tab **Auslosen** per Chip markieren, wer heute da ist (mindestens 4).
-3. **Auslosen** antippen, die Runde bei Bedarf anpassen und bestätigen.
+3. **Auslosen** antippen, die Runde bei Bedarf anpassen und **Spiel starten**.
+4. Nach dem Spiel das Ergebnis eintragen, oder **Überspringen**, wenn ihr keins festhalten wollt.
 
-Erst bestätigte Runden landen im Verlauf und fließen in die nächsten Auslosungen ein.
+Erst gestartete Spiele landen im Verlauf und fließen in die nächsten Auslosungen ein. Mit **Spiel abbrechen** zählt ein versehentlich gestartetes Spiel nicht, und ihr landet wieder bei der Aufstellung.
 
 ## Wie ausgelost wird
 
 - **Wer spielt:** Die vier Anwesenden mit den wenigsten Runden in der aktuellen Session sind dran. Bei Gleichstand entscheidet der Zufall.
 - **Wer mit wem:** Paarungen, die schon oft zusammengespielt haben, werden unwahrscheinlicher. Dafür zählt der gesamte Verlauf, nicht nur die Session.
-- **Tor oder Sturm:** Wird zufällig verteilt. Wer zu oft hintereinander dieselbe Position hatte, bekommt automatisch die andere. Die Grenze liegt standardmäßig bei 3 und lässt sich unter **Mehr** ändern.
+- **Tor oder Sturm:** Wird zufällig verteilt. Wer zu oft hintereinander dieselbe Position hatte, bekommt automatisch die andere. Die Grenze liegt standardmäßig bei 3 und lässt sich unter **Mehr** ändern. Spiele mit gemischten Positionen zählen dabei nicht mit.
 
 ## Weitere Funktionen
 
 - **Revanche:** wiederholt die letzte Runde mit denselben Teams und Positionen.
 - **Eigene Kombination:** vier Spieler als Ausgangspunkt, die ihr frei umsetzen könnt.
-- **Runde anpassen:** vor dem Bestätigen Positionen im Team tauschen oder Spieler über die Auswahlfelder ersetzen.
-- **Verlauf:** alle gespeicherten Runden mit Datum; einzelne Einträge lassen sich löschen.
+- **Runde anpassen:** vor dem Start Positionen im Team tauschen oder Spieler über die Auswahlfelder ersetzen.
+- **Ergebnis:** Tore pro Team mit +/− eintragen; die Krone zeigt, wer vorne liegt, 🤝 ein Unentschieden. Positionen lassen sich dabei noch tauschen oder als „gemischt“ markieren, wenn ihr frei gewählt oder mittendrin gewechselt habt.
+- **Verlauf:** alle Spiele mit Datum und Ergebnis; Ergebnisse lassen sich nachträglich eintragen oder ändern, einzelne Einträge löschen.
+- **Anwesenheit ausblenden:** die Namens-Chips lassen sich einklappen und erscheinen nach „Session zurücksetzen“ wieder.
 - **Session zurücksetzen:** setzt die „heute gespielt“-Zähler auf 0, der Verlauf bleibt.
 - **Export / Import:** sichert Spieler, Verlauf und Einstellungen als JSON-Datei.
 - Helles und dunkles Design, je nach Systemeinstellung.

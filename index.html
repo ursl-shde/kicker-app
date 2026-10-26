@@ -84,7 +84,7 @@
     -webkit-font-smoothing:antialiased;
   }
   h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-.01em;}
-  button{font-family:var(--font-body);}
+  button{font-family:var(--font-body);touch-action:manipulation;}
   #app{
     max-width:480px;
     margin:0 auto;
@@ -213,6 +213,44 @@
   .kt-rod.a::before{right:100%;}
   .kt-rod.b::before{left:100%;}
   .kt-man{position:absolute;top:-5px;width:6px;height:8px;margin-left:-3px;border-radius:2px;background:currentColor;}
+
+  /* Per-team controls below the team panels: Team A's column left, B's right */
+  .team-controls{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center;
+    gap:8px 10px;
+    padding:12px 14px;
+    border-top:1px solid var(--line);
+  }
+  .team-controls .btn{width:100%;white-space:nowrap;}
+  .btn-toggle.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  /* Score steppers: no transitions, no double-tap zoom, no text selection */
+  .stepper{display:flex;align-items:center;gap:2px;width:100%;}
+  .stepper button{
+    flex:none;
+    width:40px;height:44px;
+    border:none;border-radius:12px;
+    background:var(--surface-2);
+    color:var(--ink);
+    font-size:1.3rem;font-weight:700;
+    cursor:pointer;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .stepper button:active{background:var(--line);}
+  .stepper .score-wrap{flex:1;display:flex;flex-direction:column;align-items:center;line-height:1.1;}
+  .score-crown{font-size:.9rem;visibility:hidden;}
+  .score-crown.on{visibility:visible;}
+  .stepper .score{
+    text-align:center;
+    font-family:var(--font-display);
+    font-size:1.5rem;font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .stepper.a .score{color:var(--teamA);}
+  .stepper.b .score{color:var(--teamB);}
+  .score-sep{min-width:1.4em;text-align:center;font-weight:700;color:var(--ink-faint);}
   .match-vs{
     text-align:center;
     font-family:var(--font-display);
@@ -366,7 +404,11 @@
   }
   .history-teams{display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:600;}
   .history-teams > span{min-width:0;overflow-wrap:anywhere;}
-  .history-teams .vs{flex:none;color:var(--ink-faint);font-weight:500;font-size:.76rem;}
+  .history-score{font-size:.82rem;color:var(--ink-soft);margin:3px 0;}
+  .history-score b{color:var(--ink);}
+  .result-note{color:var(--ink-faint);}
+  .result-note.live{color:var(--accent);font-weight:700;}
+  .history-tools{display:flex;gap:2px;}
   .history-teams .tA{color:var(--teamA);}
   .history-teams .tB{color:var(--teamB);}
   .history-teams .pos{color:var(--ink-faint);font-weight:500;font-size:.78rem;}
@@ -422,6 +464,8 @@
   .modal h3{margin-bottom:8px;}
   .modal p{color:var(--ink-soft);font-size:.9rem;margin:0 0 18px;overflow-wrap:anywhere;}
   .modal .row{display:flex;gap:10px;}
+  .modal.sheet{max-height:92vh;max-height:92dvh;overflow-y:auto;}
+  .sheet-actions{display:flex;flex-direction:column;gap:8px;}
   .toast{
     position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
     transform:translateX(-50%);
@@ -465,6 +509,9 @@
     </div>
   </div>
 </div>
+<div class="modal-backdrop hidden" id="sheetBackdrop">
+  <div class="modal sheet" id="sheet"></div>
+</div>
 <div class="toast" id="toast"></div>
 <input type="file" id="importFile" accept="application/json" style="display:none">
 
@@ -495,11 +542,30 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    return Object.assign(defaultState(), parsed);
+    return normalizeState(Object.assign(defaultState(), parsed));
   }catch(e){
     console.error('Konnte gespeicherte Daten nicht laden', e);
     return defaultState();
   }
+}
+
+// History entries carry a result status: 'running' (match in progress),
+// 'scored' or 'noResult'. Older entries have none and count as 'noResult'.
+// Only the newest running match stays running, so none can get stuck.
+function normalizeState(s){
+  let runningSeen = false;
+  s.history.slice().sort((a,b)=>b.timestamp-a.timestamp).forEach(h=>{
+    if(!h.mixed) h.mixed = { teamA:false, teamB:false };
+    if(h.status==='running' && !runningSeen){
+      runningSeen = true;
+      if(!h.score) h.score = { teamA:0, teamB:0 };
+    } else if(h.status==='scored' && h.score){
+      h.winner = winnerOf(h.score);
+    } else {
+      setNoResult(h);
+    }
+  });
+  return s;
 }
 
 function saveState(){
@@ -531,6 +597,24 @@ function positionOfPlayerInEntry(h, id){
   if(h.teamB.sturm===id) return 'sturm';
   return null;
 }
+function teamOfPlayerInEntry(h, id){
+  if(h.teamA.tor===id || h.teamA.sturm===id) return 'teamA';
+  if(h.teamB.tor===id || h.teamB.sturm===id) return 'teamB';
+  return null;
+}
+function runningMatch(){
+  return state.history.find(h=>h.status==='running') || null;
+}
+function winnerOf(score){
+  if(score.teamA > score.teamB) return 'teamA';
+  if(score.teamB > score.teamA) return 'teamB';
+  return 'draw';
+}
+function setNoResult(h){
+  h.status = 'noResult';
+  h.score = null;
+  h.winner = null;
+}
 function sessionRoundCount(id){
   return state.history.filter(h=>h.sessionId===state.session.id && entryHasPlayer(h,id)).length;
 }
@@ -543,8 +627,9 @@ function pairTeammateCount(idA, idB){
   return count;
 }
 function positionStreak(id){
+  // Matches where the player's team mixed positions say nothing about the streak
   const entries = state.history
-    .filter(h=>entryHasPlayer(h,id))
+    .filter(h=>entryHasPlayer(h,id) && !h.mixed[teamOfPlayerInEntry(h,id)])
     .slice()
     .sort((a,b)=>b.timestamp-a.timestamp);
   if(!entries.length) return null;
@@ -652,16 +737,43 @@ function doManual(){
   };
   saveState(); render();
 }
-function confirmRound(){
+function startMatch(){
   if(!state.pendingRound) return;
   state.history.push(Object.assign({
     id: uid(),
     sessionId: state.session.id,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    status: 'running',
+    score: { teamA:0, teamB:0 },
+    winner: null,
+    mixed: { teamA:false, teamB:false }
   }, state.pendingRound));
   state.pendingRound = null;
   saveState(); render();
-  showToast('Runde gespeichert');
+}
+function saveResult(){
+  const m = runningMatch();
+  if(!m) return;
+  m.status = 'scored';
+  m.winner = winnerOf(m.score);
+  saveState(); render();
+  showToast('Ergebnis gespeichert');
+}
+function skipResult(){
+  const m = runningMatch();
+  if(!m) return;
+  setNoResult(m);
+  saveState(); render();
+  showToast('Ohne Ergebnis gespeichert');
+}
+// Removes the match so it doesn't count, and goes back to adjusting the same teams
+function abortMatch(){
+  const m = runningMatch();
+  if(!m) return;
+  state.history = state.history.filter(h=>h!==m);
+  state.pendingRound = { teamA:{ ...m.teamA }, teamB:{ ...m.teamB }, mode:m.mode };
+  saveState(); render();
+  showToast('Spiel abgebrochen');
 }
 function discardRound(){
   state.pendingRound = null;
@@ -715,6 +827,8 @@ function deleteHistoryEntry(id){
   saveState(); render();
 }
 function resetSession(){
+  const m = runningMatch();
+  if(m) setNoResult(m);
   state.session = { id: uid(), startedAt: Date.now() };
   state.pendingRound = null;
   saveState(); render();
@@ -743,7 +857,7 @@ function importData(file){
     try{
       const parsed = JSON.parse(reader.result);
       if(!parsed.players || !parsed.history) throw new Error('invalid');
-      state = Object.assign(defaultState(), parsed);
+      state = normalizeState(Object.assign(defaultState(), parsed));
       saveState(); render();
       showToast('Daten importiert');
     }catch(e){
@@ -828,11 +942,24 @@ function renderDraw(){
   }
 
   let html = presenceChips(present, true);
+  const running = runningMatch();
+  const round = running || state.pendingRound;
+  const usedIds = round ? [round.teamA.tor,round.teamA.sturm,round.teamB.tor,round.teamB.sturm] : [];
+  const waiting = present.filter(id=>!usedIds.includes(id));
 
-  if(state.pendingRound){
-    const r = state.pendingRound;
-    const usedIds = [r.teamA.tor,r.teamA.sturm,r.teamB.tor,r.teamB.sturm];
-    const waiting = present.filter(id=>!usedIds.includes(id));
+  if(running){
+    html += `
+      <div class="match-card" id="runningCard">
+        ${resultEditorHTML(running)}
+        <div class="match-actions fill-actions">
+          <button class="btn btn-ghost btn-block" data-action="abort">✕ Spiel abbrechen</button>
+          <button class="btn btn-secondary btn-block" data-action="skip">Überspringen</button>
+          <button class="btn btn-primary btn-block" data-action="saveResult">✓ Ergebnis speichern</button>
+        </div>
+      </div>
+      ${waiting.length ? waitingSection(waiting) : ''}
+    `;
+  } else if(state.pendingRound){
     html += `
       <div class="match-card">
         <div class="match-teams on-table">
@@ -840,12 +967,15 @@ function renderDraw(){
           ${teamPanelEditable('teamA','Team A')}
           ${teamPanelEditable('teamB','Team B')}
         </div>
-        <div class="match-vs">🔁 Position tauschen &nbsp;·&nbsp; Namen antippen zum Ändern</div>
+        <div class="team-controls">
+          <button class="btn btn-secondary btn-small" data-action="swapA">🔁 tauschen</button>
+          <span></span>
+          <button class="btn btn-secondary btn-small" data-action="swapB">🔁 tauschen</button>
+        </div>
+        <div class="match-vs">Namen antippen zum Ändern</div>
         <div class="match-actions fill-actions">
-          <button class="btn btn-secondary btn-small" data-action="swapA">🔁 Team A</button>
-          <button class="btn btn-secondary btn-small" data-action="swapB">🔁 Team B</button>
-          <button class="btn btn-ghost btn-small" data-action="discard">✕ Verwerfen</button>
-          <button class="btn btn-primary btn-block" data-action="confirm">✓ Bestätigen &amp; speichern</button>
+          <button class="btn btn-ghost btn-block" data-action="discard">✕ Verwerfen</button>
+          <button class="btn btn-primary btn-block" data-action="confirm">▶ Spiel starten</button>
         </div>
       </div>
       ${waiting.length ? waitingSection(waiting) : ''}
@@ -855,12 +985,11 @@ function renderDraw(){
     html += `
       <div class="match-card">
         <div class="match-teams${last?' on-table':''}">${last?kickerTable():''}${lastRoundOrPrompt(last)}</div>
-        <div class="match-actions">
-          <button class="btn btn-primary btn-block" data-action="draw">🎲 Auslosen</button>
-        </div>
-        <div class="match-actions fill-actions" style="padding-top:0;border-top:none;">
+        ${last ? `<div class="match-vs">Letzte Runde · ${scoreLine(last)}</div>` : ''}
+        <div class="match-actions fill-actions">
           <button class="btn btn-ghost btn-small" data-action="revanche">↻ Revanche</button>
           <button class="btn btn-ghost btn-small" data-action="manual">✎ Eigene Kombination</button>
+          <button class="btn btn-primary btn-block" data-action="draw">🎲 Auslosen</button>
         </div>
       </div>
     `;
@@ -868,6 +997,7 @@ function renderDraw(){
   el.innerHTML = html;
   attachChipHandlers();
   attachDrawHandlers();
+  if(running) attachResultEditor(document.getElementById('runningCard'), running, saveState, render);
 }
 
 // Rods from Team A's goal (top) to Team B's goal (bottom): owner and number of figures
@@ -887,18 +1017,143 @@ function lastRoundOrPrompt(last){
   if(!last){
     return `<div style="padding:20px;color:var(--ink-soft);font-size:.88rem;grid-column:1/-1;text-align:center;">Noch keine Runde gespielt heute.</div>`;
   }
+  return teamPanelStatic(last, 'teamA') + teamPanelStatic(last, 'teamB');
+}
+// Team A's goal is at the top of the table, Team B's at the bottom
+function teamPanelStatic(h, teamKey){
+  const order = teamKey==='teamA' ? ['tor','sturm'] : ['sturm','tor'];
+  const role = pos => h.mixed[teamKey] ? 'Tor/Sturm' : (pos==='tor' ? 'Tor' : 'Sturm');
   return `
-    <div class="team-panel teamA">
-      <div class="team-label"><span class="dot"></span>Team A</div>
-      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamA.tor))}</div></div>
-      <div class="slot"><div class="slot-role">Sturm</div><div class="slot-name">${escapeHtml(playerName(last.teamA.sturm))}</div></div>
-    </div>
-    <div class="team-panel teamB">
-      <div class="team-label"><span class="dot"></span>Team B</div>
-      <div class="slot"><div class="slot-role">Sturm</div><div class="slot-name">${escapeHtml(playerName(last.teamB.sturm))}</div></div>
-      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamB.tor))}</div></div>
+    <div class="team-panel ${teamKey}">
+      <div class="team-label"><span class="dot"></span>Team ${teamKey==='teamA'?'A':'B'}</div>
+      ${order.map(pos=>`
+        <div class="slot"><div class="slot-role">${role(pos)}</div><div class="slot-name">${escapeHtml(playerName(h[teamKey][pos]))}</div></div>
+      `).join('')}
     </div>
   `;
+}
+
+/* ---------- Result entry (running match card and history sheet) ---------- */
+// m: { teamA, teamB, score, mixed }. Steppers update the numbers in place
+// instead of re-rendering, so fast taps register immediately.
+function resultEditorHTML(m){
+  const w = winnerOf(m.score);
+  const stepper = team => `
+    <div class="stepper ${team==='teamA'?'a':'b'}" data-stepper="${team}">
+      <button data-step="-1" aria-label="Team ${team==='teamA'?'A':'B'}: Tor abziehen">−</button>
+      <span class="score-wrap">
+        <span class="score-crown ${w===team?'on':''}" data-crown="${team}" aria-label="führt">👑</span>
+        <span class="score" data-score="${team}">${m.score[team]}</span>
+      </span>
+      <button data-step="1" aria-label="Team ${team==='teamA'?'A':'B'}: Tor hinzufügen">+</button>
+    </div>`;
+  const swap = team => `<button class="btn btn-secondary btn-small" data-rswap="${team}" ${m.mixed[team]?'disabled':''}>🔁 tauschen</button>`;
+  const mixed = team => `<button class="btn btn-ghost btn-small btn-toggle ${m.mixed[team]?'on':''}" data-mixed="${team}" aria-pressed="${m.mixed[team]}">${m.mixed[team]?'☑':'☐'} gemischt</button>`;
+  return `
+    <div class="match-teams on-table">
+      ${kickerTable()}
+      ${teamPanelStatic(m, 'teamA')}
+      ${teamPanelStatic(m, 'teamB')}
+    </div>
+    <div class="team-controls">
+      ${stepper('teamA')}<div class="score-sep" data-score-sep>${w==='draw'?'🤝':':'}</div>${stepper('teamB')}
+      ${swap('teamA')}<span></span>${swap('teamB')}
+      ${mixed('teamA')}<span></span>${mixed('teamB')}
+    </div>
+  `;
+}
+function attachResultEditor(root, m, persist, rerender){
+  root.querySelectorAll('[data-stepper]').forEach(st=>{
+    const team = st.getAttribute('data-stepper');
+    st.querySelectorAll('[data-step]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        m.score[team] = Math.max(0, m.score[team] + Number(btn.getAttribute('data-step')));
+        persist();
+        updateScoreDisplay(root, m);
+      });
+    });
+  });
+  root.querySelectorAll('[data-rswap]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const t = m[btn.getAttribute('data-rswap')];
+      [t.tor, t.sturm] = [t.sturm, t.tor];
+      persist(); rerender();
+    });
+  });
+  root.querySelectorAll('[data-mixed]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const team = btn.getAttribute('data-mixed');
+      m.mixed[team] = !m.mixed[team];
+      persist(); rerender();
+    });
+  });
+}
+function updateScoreDisplay(root, m){
+  const w = winnerOf(m.score);
+  ['teamA','teamB'].forEach(team=>{
+    root.querySelector(`[data-score="${team}"]`).textContent = m.score[team];
+    root.querySelector(`[data-crown="${team}"]`).classList.toggle('on', w===team);
+  });
+  root.querySelector('[data-score-sep]').textContent = w==='draw' ? '🤝' : ':';
+}
+function scoreLine(h){
+  if(h.status==='running') return '<span class="result-note live">läuft</span>';
+  if(h.status!=='scored') return '<span class="result-note">kein Ergebnis</span>';
+  const w = h.winner;
+  return `${w==='teamA'?'👑 ':''}Team A <b>${h.score.teamA} : ${h.score.teamB}</b> Team B${w==='teamB'?' 👑':''}${w==='draw'?' 🤝':''}`;
+}
+
+// Editing a saved match works on a copy until it is saved
+let sheetDraft = null;
+function openResultSheet(id){
+  const h = state.history.find(x=>x.id===id);
+  if(!h) return;
+  sheetDraft = {
+    id,
+    teamA: { ...h.teamA }, teamB: { ...h.teamB },
+    mixed: { ...h.mixed },
+    score: h.score ? { ...h.score } : { teamA:0, teamB:0 }
+  };
+  renderSheet();
+  document.getElementById('sheetBackdrop').classList.remove('hidden');
+}
+function renderSheet(){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <h3>Ergebnis bearbeiten</h3>
+    <p>Positionen tauschen, „gemischt“ setzen oder den Spielstand ändern.</p>
+    <div class="match-card">${resultEditorHTML(sheetDraft)}</div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost btn-block" data-sheet="cancel">Abbrechen</button>
+      <button class="btn btn-secondary btn-block" data-sheet="noResult">Ohne Ergebnis speichern</button>
+      <button class="btn btn-primary btn-block" data-sheet="save">✓ Ergebnis speichern</button>
+    </div>
+  `;
+  attachResultEditor(sheet, sheetDraft, ()=>{}, renderSheet);
+  sheet.querySelector('[data-sheet="cancel"]').addEventListener('click', closeSheet);
+  sheet.querySelector('[data-sheet="noResult"]').addEventListener('click', ()=>commitSheet(false));
+  sheet.querySelector('[data-sheet="save"]').addEventListener('click', ()=>commitSheet(true));
+}
+function commitSheet(withScore){
+  const h = state.history.find(x=>x.id===sheetDraft.id);
+  if(h){
+    h.teamA = sheetDraft.teamA;
+    h.teamB = sheetDraft.teamB;
+    h.mixed = sheetDraft.mixed;
+    if(withScore){
+      h.status = 'scored';
+      h.score = sheetDraft.score;
+      h.winner = winnerOf(h.score);
+    } else {
+      setNoResult(h);
+    }
+    saveState(); render();
+  }
+  closeSheet();
+}
+function closeSheet(){
+  document.getElementById('sheetBackdrop').classList.add('hidden');
+  sheetDraft = null;
 }
 
 function teamPanelEditable(teamKey, label){
@@ -967,7 +1222,8 @@ function attachChipHandlers(){
 function attachDrawHandlers(){
   const map = {
     draw: doDraw, revanche: doRevanche, manual: doManual,
-    confirm: confirmRound, discard: discardRound,
+    confirm: startMatch, discard: discardRound,
+    abort: abortMatch, skip: skipResult, saveResult: saveResult,
     swapA: ()=>swapTeamPositions('teamA'), swapB: ()=>swapTeamPositions('teamB')
   };
   Object.keys(map).forEach(action=>{
@@ -1023,27 +1279,35 @@ function renderHistory(){
   const el = document.getElementById('view-history');
   const entries = state.history.slice().sort((a,b)=>b.timestamp-a.timestamp);
   if(entries.length===0){
-    el.innerHTML = emptyState('Noch keine Runden gespeichert', 'Bestätigte Auslosungen erscheinen hier.');
+    el.innerHTML = emptyState('Noch keine Runden gespeichert', 'Gestartete Spiele erscheinen hier.');
     return;
   }
+  const names = (h, teamKey)=>{
+    const t = h[teamKey];
+    return h.mixed[teamKey]
+      ? `${escapeHtml(playerName(t.tor))} / ${escapeHtml(playerName(t.sturm))} <span class="pos">(gemischt)</span>`
+      : `${escapeHtml(playerName(t.tor))} <span class="pos">(Tor)</span> / ${escapeHtml(playerName(t.sturm))} <span class="pos">(Sturm)</span>`;
+  };
   el.innerHTML = `
     <div class="section-title">Verlauf (${entries.length})</div>
     ${entries.map(h=>`
       <div class="history-entry">
         <div class="history-meta">
           <span>${formatDate(h.timestamp)} · ${modeLabel(h.mode)}</span>
-          <button class="icon-btn danger" data-hdel="${h.id}" title="Eintrag löschen">🗑</button>
+          <span class="history-tools">
+            ${h.status==='running' ? '' : `<button class="icon-btn" data-hedit="${h.id}" title="Ergebnis bearbeiten">✎</button>`}
+            <button class="icon-btn danger" data-hdel="${h.id}" title="Eintrag löschen">🗑</button>
+          </span>
         </div>
-        <div class="history-teams">
-          <span class="tA">${escapeHtml(playerName(h.teamA.tor))} <span class="pos">(Tor)</span> / ${escapeHtml(playerName(h.teamA.sturm))} <span class="pos">(Sturm)</span></span>
-        </div>
-        <div class="history-teams" style="margin-top:2px;">
-          <span class="vs">vs.</span>
-          <span class="tB">${escapeHtml(playerName(h.teamB.tor))} <span class="pos">(Tor)</span> / ${escapeHtml(playerName(h.teamB.sturm))} <span class="pos">(Sturm)</span></span>
-        </div>
+        <div class="history-teams"><span class="tA">${names(h,'teamA')}</span></div>
+        <div class="history-score">${scoreLine(h)}</div>
+        <div class="history-teams"><span class="tB">${names(h,'teamB')}</span></div>
       </div>
     `).join('')}
   `;
+  document.querySelectorAll('[data-hedit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openResultSheet(btn.getAttribute('data-hedit')));
+  });
   document.querySelectorAll('[data-hdel]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-hdel');
