@@ -44,10 +44,10 @@
       --line:rgba(236,239,231,.14);
       --teamA:#E0A050;
       --teamA-soft:rgba(224,160,80,.18);
-      --teamA-ink:#3D2508;
+      --teamA-ink:#F2D3AC;
       --teamB:#5FAFCB;
       --teamB-soft:rgba(95,175,203,.18);
-      --teamB-ink:#0C2C38;
+      --teamB-ink:#C7E4EE;
       --accent:#7CB342;
       --accent-ink:#12200E;
       --danger:#E0836A;
@@ -64,10 +64,10 @@
     --line:rgba(236,239,231,.14);
     --teamA:#E0A050;
     --teamA-soft:rgba(224,160,80,.18);
-    --teamA-ink:#3D2508;
+    --teamA-ink:#F2D3AC;
     --teamB:#5FAFCB;
     --teamB-soft:rgba(95,175,203,.18);
-    --teamB-ink:#0C2C38;
+    --teamB-ink:#C7E4EE;
     --accent:#7CB342;
     --accent-ink:#12200E;
     --danger:#E0836A;
@@ -175,6 +175,44 @@
     -webkit-appearance:none;
     border-bottom:1px solid var(--line);
   }
+  /* Kicker table seen from above, faintly behind the team panels. Team A's
+     goal is at the top, so A stands on the left (Tor top, Sturm bottom) and
+     B on the right (Sturm top, Tor bottom), as at the real table. */
+  .match-teams.on-table{position:relative;isolation:isolate;min-height:200px;}
+  .match-teams.on-table .team-panel{display:flex;flex-direction:column;}
+  .match-teams.on-table .team-panel > *{position:relative;z-index:2;}
+  .match-teams.on-table .slot:last-child{margin-top:auto;}
+  .match-teams.on-table .team-panel.teamB{text-align:right;}
+  .match-teams.on-table .team-panel.teamB .team-label{justify-content:flex-end;}
+  .match-teams.on-table .team-panel.teamB select{text-align:right;text-align-last:right;}
+  .kicker-table{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.2;}
+  .kt-field{
+    position:absolute;
+    top:12px;bottom:12px;left:0;right:0;
+    width:min(38%,130px);
+    margin:0 auto;
+    border:1.5px solid var(--ink);
+    border-radius:6px;
+  }
+  .kt-field::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1.5px solid var(--ink);}
+  .kt-circle{
+    position:absolute;left:50%;top:50%;
+    width:30px;height:30px;
+    transform:translate(-50%,-50%);
+    border:1.5px solid var(--ink);
+    border-radius:50%;
+  }
+  .kt-goal{position:absolute;left:34%;right:34%;height:6px;border:1.5px solid var(--ink);}
+  .kt-goal.top{top:-7px;border-bottom:none;}
+  .kt-goal.bottom{bottom:-7px;border-top:none;}
+  .kt-rod{position:absolute;left:0;right:0;border-top:2px solid currentColor;}
+  .kt-rod.a{color:var(--teamA);}
+  .kt-rod.b{color:var(--teamB);}
+  /* handle on the side where the owning team stands */
+  .kt-rod::before{content:'';position:absolute;top:-3px;width:16px;height:4px;border-radius:2px;background:currentColor;}
+  .kt-rod.a::before{right:100%;}
+  .kt-rod.b::before{left:100%;}
+  .kt-man{position:absolute;top:-5px;width:6px;height:8px;margin-left:-3px;border-radius:2px;background:currentColor;}
   .match-vs{
     text-align:center;
     font-family:var(--font-display);
@@ -783,7 +821,8 @@ function renderDraw(){
     const waiting = present.filter(id=>!usedIds.includes(id));
     html += `
       <div class="match-card">
-        <div class="match-teams">
+        <div class="match-teams on-table">
+          ${kickerTable()}
           ${teamPanelEditable('teamA','Team A')}
           ${teamPanelEditable('teamB','Team B')}
         </div>
@@ -801,7 +840,7 @@ function renderDraw(){
     const last = state.history.slice().sort((a,b)=>b.timestamp-a.timestamp)[0];
     html += `
       <div class="match-card">
-        <div class="match-teams">${lastRoundOrPrompt(last)}</div>
+        <div class="match-teams${last?' on-table':''}">${last?kickerTable():''}${lastRoundOrPrompt(last)}</div>
         <div class="match-actions">
           <button class="btn btn-primary btn-block" data-action="draw">🎲 Auslosen</button>
         </div>
@@ -817,6 +856,19 @@ function renderDraw(){
   attachDrawHandlers();
 }
 
+// Rods from Team A's goal (top) to Team B's goal (bottom): owner and number of figures
+const KICKER_RODS = [['a',1],['a',2],['b',3],['a',5],['b',5],['a',3],['b',2],['b',1]];
+function kickerTable(){
+  const rods = KICKER_RODS.map(([team, figures], i)=>{
+    const men = Array.from({length:figures}, (_, j)=>`<span class="kt-man" style="left:${(j+1)*100/(figures+1)}%"></span>`).join('');
+    return `<div class="kt-rod ${team}" style="top:${(i+1)*100/(KICKER_RODS.length+1)}%">${men}</div>`;
+  }).join('');
+  return `
+    <div class="kicker-table" aria-hidden="true">
+      <div class="kt-field"><span class="kt-goal top"></span><span class="kt-goal bottom"></span><span class="kt-circle"></span>${rods}</div>
+    </div>
+  `;
+}
 function lastRoundOrPrompt(last){
   if(!last){
     return `<div style="padding:20px;color:var(--ink-soft);font-size:.88rem;grid-column:1/-1;text-align:center;">Noch keine Runde gespielt heute.</div>`;
@@ -829,24 +881,24 @@ function lastRoundOrPrompt(last){
     </div>
     <div class="team-panel teamB">
       <div class="team-label"><span class="dot"></span>Team B</div>
-      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamB.tor))}</div></div>
       <div class="slot"><div class="slot-role">Sturm</div><div class="slot-name">${escapeHtml(playerName(last.teamB.sturm))}</div></div>
+      <div class="slot"><div class="slot-role">Tor</div><div class="slot-name">${escapeHtml(playerName(last.teamB.tor))}</div></div>
     </div>
   `;
 }
 
 function teamPanelEditable(teamKey, label){
+  // Team A's goal is at the top of the table, Team B's at the bottom
+  const order = teamKey==='teamA' ? [['tor','Tor'],['sturm','Sturm']] : [['sturm','Sturm'],['tor','Tor']];
   return `
     <div class="team-panel ${teamKey==='teamA'?'teamA':'teamB'}">
       <div class="team-label"><span class="dot"></span>${label}</div>
-      <div class="slot">
-        <div class="slot-role">Tor</div>
-        <select data-team="${teamKey}" data-pos="tor">${teamOptionsHTML(teamKey,'tor')}</select>
-      </div>
-      <div class="slot">
-        <div class="slot-role">Sturm</div>
-        <select data-team="${teamKey}" data-pos="sturm">${teamOptionsHTML(teamKey,'sturm')}</select>
-      </div>
+      ${order.map(([pos, role])=>`
+        <div class="slot">
+          <div class="slot-role">${role}</div>
+          <select data-team="${teamKey}" data-pos="${pos}">${teamOptionsHTML(teamKey,pos)}</select>
+        </div>
+      `).join('')}
     </div>
   `;
 }
