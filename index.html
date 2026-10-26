@@ -204,6 +204,7 @@
     justify-content:center;
     gap:6px;
     flex:1;
+    text-align:center;
     text-decoration:none;
   }
   .btn-primary{background:var(--accent);color:var(--accent-ink);}
@@ -213,6 +214,12 @@
   .btn-small{padding:8px 12px;font-size:.8rem;flex:none;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
   .btn-block{width:100%;}
+  /* Buttons share a row and stretch to fill it; on narrow screens they
+     wrap whole onto the next row instead of squishing. Block buttons always
+     get their own full row and may wrap their text onto two lines. */
+  .fill-actions{flex-wrap:wrap;}
+  .fill-actions .btn{flex:1 1 auto;white-space:nowrap;}
+  .fill-actions .btn-block{flex:1 1 100%;min-width:0;white-space:normal;}
 
   /* Sections */
   .section-title{
@@ -262,6 +269,7 @@
   }
   .player-row input[type=text]{
     flex:1;
+    min-width:0;
     border:none;
     background:transparent;
     font-family:var(--font-body);
@@ -282,6 +290,7 @@
   .add-player-row{display:flex;gap:8px;margin-top:14px;}
   .add-player-row input{
     flex:1;
+    min-width:0;
     border:1px solid var(--line);
     border-radius:var(--radius-md);
     padding:11px 13px;
@@ -776,7 +785,7 @@ function renderDraw(){
           ${teamPanelEditable('teamB','Team B')}
         </div>
         <div class="match-vs">🔁 Position tauschen &nbsp;·&nbsp; Namen antippen zum Ändern</div>
-        <div class="match-actions">
+        <div class="match-actions fill-actions">
           <button class="btn btn-secondary btn-small" data-action="swapA">🔁 Team A</button>
           <button class="btn btn-secondary btn-small" data-action="swapB">🔁 Team B</button>
           <button class="btn btn-ghost btn-small" data-action="discard">✕ Verwerfen</button>
@@ -793,7 +802,7 @@ function renderDraw(){
         <div class="match-actions">
           <button class="btn btn-primary btn-block" data-action="draw">🎲 Auslosen</button>
         </div>
-        <div class="match-actions" style="padding-top:0;border-top:none;">
+        <div class="match-actions fill-actions" style="padding-top:0;border-top:none;">
           <button class="btn btn-ghost btn-small" data-action="revanche">↻ Revanche</button>
           <button class="btn btn-ghost btn-small" data-action="manual">✎ Eigene Kombination</button>
         </div>
@@ -982,7 +991,7 @@ function renderSettings(){
     <div class="section-title">Daten</div>
     <div class="settings-row">
       <p>Sichert Spieler, Verlauf und Einstellungen als Datei – z. B. vor einem Update oder zum Übertragen auf ein anderes Gerät.</p>
-      <div class="settings-actions">
+      <div class="settings-actions fill-actions">
         <button class="btn btn-secondary" id="exportBtn">⬇ Exportieren</button>
         <button class="btn btn-secondary" id="importBtn">⬆ Importieren</button>
       </div>
