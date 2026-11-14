@@ -1,5 +1,5 @@
 /* ---------- State ---------- */
-import { winnerOf, setNoResult } from './history.js';
+import { winnerOf, setNoResult, entryHasPlayer } from './history.js';
 import { showToast } from './ui.js';
 
 export const STORAGE_KEY = 'kicker_lose_state_v1';
@@ -15,7 +15,8 @@ export function defaultState(){
     session: { id: uid(), startedAt: Date.now() },
     pendingRound: null,
     history: [],
-    settings: { positionStreakLimit: 3 }
+    // showOdds: win probability on the draw card – 'tap' | 'always' | 'never'
+    settings: { positionStreakLimit: 3, showOdds: 'tap' }
   };
 }
 
@@ -30,12 +31,19 @@ function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    return normalizeState(Object.assign(defaultState(), parsed));
+    return hydrateState(JSON.parse(raw));
   }catch(e){
     console.error('Konnte gespeicherte Daten nicht laden', e);
     return defaultState();
   }
+}
+
+// Turns saved or imported data into a complete state: anything missing,
+// including settings added in later versions, gets its default.
+export function hydrateState(parsed){
+  const s = Object.assign(defaultState(), parsed);
+  s.settings = Object.assign(defaultState().settings, parsed.settings);
+  return normalizeState(s);
 }
 
 // History entries carry a result status: 'running' (match in progress),
@@ -81,6 +89,13 @@ export function playerName(id){
   const p = state.players.find(pl=>pl.id===id);
   return p ? p.name : '—';
 }
+// Archived players keep their matches and statistics but are out of the pool
+export function activePlayers(){
+  return state.players.filter(p=>!p.archived);
+}
 export function presentPlayers(){
-  return state.presentIds.filter(id=>state.players.some(p=>p.id===id));
+  return state.presentIds.filter(id=>state.players.some(p=>p.id===id && !p.archived));
+}
+export function playerHasMatches(id){
+  return state.history.some(h=>entryHasPlayer(h, id));
 }

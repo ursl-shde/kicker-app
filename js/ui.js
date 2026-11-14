@@ -4,7 +4,9 @@
 // Transient view state shared between actions and views
 export const uiState = {
   // Team whose positions were just swapped; its names fade in once on the next render
-  flashTeam: null
+  flashTeam: null,
+  // The pending round whose win probability was revealed by tapping (see views/draw.js)
+  oddsRevealedFor: null
 };
 
 /* ---------- Modal / toast ---------- */
@@ -27,6 +29,17 @@ export function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
 }
+// The bottom sheet, for content a view fills in itself
+export function showSheet(html){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = html;
+  sheet.scrollTop = 0;
+  document.getElementById('sheetBackdrop').classList.remove('hidden');
+  return sheet;
+}
+export function hideSheet(){
+  document.getElementById('sheetBackdrop').classList.add('hidden');
+}
 export function initUi(){
   document.getElementById('modalCancel').addEventListener('click', closeModal);
   document.getElementById('modalConfirm').addEventListener('click', ()=>{ if(modalConfirmCb) modalConfirmCb(); });
@@ -40,6 +53,12 @@ export function escapeAttr(str){ return escapeHtml(str); }
 
 export function emptyState(title, text){
   return `<div class="empty-state"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div>`;
+}
+export function formatDay(ts){
+  return new Date(ts).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+export function formatPercent(share){
+  return Math.round(share*100) + ' %';
 }
 export function formatDate(ts){
   const d = new Date(ts);

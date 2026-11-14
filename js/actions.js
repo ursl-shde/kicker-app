@@ -1,5 +1,5 @@
 /* ---------- Actions ---------- */
-import { state, setState, defaultState, normalizeState, saveState, commit, uid, presentPlayers } from './state.js';
+import { state, setState, defaultState, hydrateState, saveState, commit, uid, presentPlayers, playerHasMatches } from './state.js';
 import { runningMatch, newestFirst, entryPlayerIds, winnerOf, setNoResult } from './history.js';
 import { generateRound, shuffle } from './draw.js';
 import { showToast, uiState } from './ui.js';
@@ -127,9 +127,24 @@ export function renamePlayer(id, name){
   name = name.trim();
   if(p && name){ p.name = name; saveState(); }
 }
-export function deletePlayer(id){
-  state.players = state.players.filter(p=>p.id!==id);
+// Takes a player out of the pool. With matches in the history the player is
+// archived, so names and statistics stay; without any, the player is removed.
+export function removePlayer(id){
+  if(playerHasMatches(id)){
+    const p = state.players.find(pl=>pl.id===id);
+    if(p) p.archived = true;
+  } else {
+    state.players = state.players.filter(p=>p.id!==id);
+  }
   state.presentIds = state.presentIds.filter(pid=>pid!==id);
+  // A round that is still being set up can't keep a player who left
+  if(state.pendingRound && entryPlayerIds(state.pendingRound).includes(id)) state.pendingRound = null;
+  commit();
+}
+export function restorePlayer(id){
+  const p = state.players.find(pl=>pl.id===id);
+  if(!p) return;
+  delete p.archived;
   commit();
 }
 export function deleteHistoryEntry(id){
@@ -139,6 +154,10 @@ export function deleteHistoryEntry(id){
 export function setPositionStreakLimit(value){
   state.settings.positionStreakLimit = value;
   saveState();
+}
+export function setShowOdds(value){
+  state.settings.showOdds = value;
+  commit();
 }
 export function resetSession(){
   const m = runningMatch(state.history);
@@ -171,7 +190,7 @@ export function importData(file){
     try{
       const parsed = JSON.parse(reader.result);
       if(!parsed.players || !parsed.history) throw new Error('invalid');
-      setState(normalizeState(Object.assign(defaultState(), parsed)));
+      setState(hydrateState(parsed));
       commit();
       showToast('Daten importiert');
     }catch(e){

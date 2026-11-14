@@ -1,6 +1,6 @@
 /* ---------- Settings view ---------- */
 import { state } from '../state.js';
-import { setPositionStreakLimit, resetSession, resetAll, exportData } from '../actions.js';
+import { setPositionStreakLimit, setShowOdds, resetSession, resetAll, exportData } from '../actions.js';
 import { openModal, closeModal } from '../ui.js';
 
 export function renderSettings(){
@@ -11,6 +11,16 @@ export function renderSettings(){
       <label for="streakLimit">Positions-Wechsel nach</label>
       <p>Wer so oft hintereinander dieselbe Position gespielt hat, bekommt automatisch die andere zugeteilt.</p>
       <input type="number" id="streakLimit" min="1" max="10" value="${state.settings.positionStreakLimit}"> mal
+    </div>
+
+    <div class="section-title">Anzeige</div>
+    <div class="settings-row">
+      <label for="showOdds">Siegchance vor dem Spiel</label>
+      <p>Zeigt bei der Aufstellung, wie die Chancen nach der bisherigen Elo-Wertung stehen.</p>
+      <select id="showOdds">
+        ${[['tap','Erst nach Antippen'],['always','Immer anzeigen'],['never','Nie anzeigen']].map(([value, label])=>
+          `<option value="${value}" ${state.settings.showOdds===value?'selected':''}>${label}</option>`).join('')}
+      </select>
     </div>
 
     <div class="section-title">Session</div>
@@ -42,6 +52,7 @@ export function renderSettings(){
   document.getElementById('streakLimit').addEventListener('change', e=>{
     setPositionStreakLimit(Math.max(1, Math.min(10, parseInt(e.target.value,10) || 3)));
   });
+  document.getElementById('showOdds').addEventListener('change', e=>setShowOdds(e.target.value));
   document.querySelector('[data-action="resetSession"]').addEventListener('click', ()=>{
     openModal('Session zurücksetzen?', 'Die heutigen Runden-Zähler starten bei 0. Der bisherige Verlauf bleibt gespeichert.', ()=>{
       resetSession(); closeModal();

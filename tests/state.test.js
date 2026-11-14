@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeState, defaultState } from '../js/state.js';
+import { normalizeState, hydrateState, defaultState } from '../js/state.js';
 
 const teams = { teamA: { tor:'p1', sturm:'p2' }, teamB: { tor:'p3', sturm:'p4' } };
 function stateWith(history){
@@ -36,4 +36,11 @@ test('the winner of a scored match is derived from its score', () => {
   assert.equal(s.history[0].winner, 'teamB');
   assert.equal(s.history[1].winner, 'draw');
   assert.equal(s.history[2].status, 'noResult');
+});
+
+test('data saved by an older version gets the settings added since', () => {
+  const s = hydrateState({ players:[], history:[], settings:{ positionStreakLimit:5 } });
+  assert.deepEqual(s.settings, { positionStreakLimit:5, showOdds:'tap' });
+  assert.equal(hydrateState({ players:[], history:[] }).settings.positionStreakLimit, 3);
+  assert.equal(hydrateState({ players:[], history:[], settings:{ showOdds:'never' } }).settings.showOdds, 'never');
 });

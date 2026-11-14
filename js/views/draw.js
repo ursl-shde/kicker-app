@@ -1,7 +1,9 @@
 /* ---------- Draw view: presence chips, pending round, running match ---------- */
-import { state, saveState, notify, playerName, presentPlayers } from '../state.js';
+import { state, saveState, notify, playerName, presentPlayers, activePlayers } from '../state.js';
 import { runningMatch, newestFirst, entryPlayerIds, sessionRoundCount } from '../history.js';
 import * as actions from '../actions.js';
+import { computeRatings, winProbability } from '../stats.js';
+import { oddsHTML } from '../charts.js';
 import { escapeHtml, emptyState, uiState } from '../ui.js';
 import { kickerTable, teamPanel, teamPanelStatic, swapButton, resultEditorHTML, attachResultEditor, scoreLine } from './match.js';
 
@@ -36,7 +38,7 @@ export function renderDraw(){
   const el = document.getElementById('view-draw');
   const present = presentPlayers();
 
-  if(state.players.length === 0){
+  if(activePlayers().length === 0){
     el.innerHTML = emptyState('Noch keine Spieler', 'Leg zuerst eure Stammspieler im Tab „Spieler“ an.');
     return;
   }
@@ -75,6 +77,7 @@ export function renderDraw(){
           ${teamPanelEditable('teamA')}
           ${teamPanelEditable('teamB')}
         </div>
+        ${oddsRowHTML(state.pendingRound)}
         <div class="match-actions fill-actions">
           <button class="btn btn-ghost btn-block" data-action="discard">✕ Verwerfen</button>
           <button class="btn btn-primary btn-block" data-action="confirm">▶ Spiel starten</button>
@@ -101,6 +104,24 @@ export function renderDraw(){
   attachChipHandlers();
   attachDrawHandlers();
   if(running) attachResultEditor(document.getElementById('runningCard'), running, saveState, notify);
+}
+
+// Win probability for the round being set up. Depending on the setting it is
+// shown right away, only after a tap (so nobody is spoiled), or not at all.
+// A reveal holds for these two teams; position swaps don't change the odds.
+function oddsKey(round){
+  const team = t=>[t.tor, t.sturm].sort().join('+');
+  return team(round.teamA) + '|' + team(round.teamB);
+}
+function oddsRowHTML(round){
+  const mode = state.settings.showOdds;
+  if(mode==='never') return '';
+  const revealed = mode==='always' || uiState.oddsRevealedFor===oddsKey(round);
+  const content = revealed
+    ? oddsHTML(winProbability([round.teamA.tor, round.teamA.sturm], [round.teamB.tor, round.teamB.sturm], computeRatings(state.history)))
+    : `<button class="btn btn-ghost btn-small" data-action="showOdds">Siegchance anzeigen</button>`;
+  // The row keeps one height, so revealing never moves the buttons below
+  return `<div class="odds-row">${content}</div>`;
 }
 
 function lastRoundOrPrompt(last){
@@ -137,7 +158,7 @@ function waitingSection(waiting){
 // the session, so a new session (Session zurücksetzen) shows them again.
 function presenceChips(present, collapsible){
   const hidden = collapsible && state.session.chipsHidden;
-  const title = `Heute anwesend · ${present.length} von ${state.players.length}`;
+  const title = `Heute anwesend · ${present.length} von ${activePlayers().length}`;
   return `
     ${collapsible ? `
       <button class="section-title section-toggle" data-chips-toggle aria-expanded="${!hidden}">
@@ -146,7 +167,7 @@ function presenceChips(present, collapsible){
     ` : `<div class="section-title">${title}</div>`}
     ${hidden ? '' : `
       <div class="waiting-list" id="presenceChips">
-        ${state.players.map(p=>`
+        ${activePlayers().map(p=>`
           <span class="chip ${present.includes(p.id)?'present':''}" data-toggle="${p.id}">
             ${escapeHtml(p.name)} <span class="n">${roundsToday(p.id)}×</span>
           </span>
@@ -169,7 +190,8 @@ function attachDrawHandlers(){
     draw: actions.doDraw, revanche: actions.doRevanche, manual: actions.doManual,
     confirm: actions.startMatch, discard: actions.discardRound,
     abort: actions.abortMatch, skip: actions.skipResult, saveResult: actions.saveResult,
-    swapA: ()=>actions.swapTeamPositions('teamA'), swapB: ()=>actions.swapTeamPositions('teamB')
+    swapA: ()=>actions.swapTeamPositions('teamA'), swapB: ()=>actions.swapTeamPositions('teamB'),
+    showOdds: ()=>{ uiState.oddsRevealedFor = oddsKey(state.pendingRound); notify(); }
   };
   Object.keys(map).forEach(action=>{
     document.querySelectorAll(`[data-action="${action}"]`).forEach(el=>{

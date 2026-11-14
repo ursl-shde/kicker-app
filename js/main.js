@@ -5,6 +5,7 @@ import { initUi } from './ui.js';
 import { renderDraw } from './views/draw.js';
 import { renderPlayers } from './views/players.js';
 import { renderHistory } from './views/history.js';
+import { renderStats } from './views/stats.js';
 import { renderSettings } from './views/settings.js';
 
 let activeView = 'draw';
@@ -16,6 +17,8 @@ function render(){
   renderPlayers();
   renderHistory();
   renderSettings();
+  // The statistics are only worked out while their tab is showing
+  if(activeView==='stats') renderStats();
 }
 function sessionRoundNumber(){
   return state.history.filter(h=>h.sessionId===state.session.id).length + (state.pendingRound?1:0);
@@ -26,6 +29,7 @@ document.querySelectorAll('.tabbar button').forEach(btn=>{
     activeView = btn.getAttribute('data-view');
     document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b===btn));
     document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+activeView));
+    if(activeView==='stats') renderStats();
   });
 });
 document.getElementById('importFile').addEventListener('change', e=>{
