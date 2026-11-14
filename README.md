@@ -39,12 +39,39 @@ Alles wird ausschließlich lokal im Browser gespeichert (`localStorage`). Es gib
 
 ## Entwicklung
 
-Die gesamte App steckt in einer einzigen Datei, [index.html](index.html), ohne Build-Schritt und ohne Abhängigkeiten. Nur die Schriftarten werden von Google Fonts geladen.
+Die App besteht aus HTML, CSS und JavaScript-Modulen, ohne Build-Schritt und ohne Abhängigkeiten. Nur die Schriftarten werden von Google Fonts geladen.
+
+| Datei | Inhalt |
+|---|---|
+| [index.html](index.html) | Grundgerüst der Seite |
+| [styles.css](styles.css) | Gestaltung |
+| [js/main.js](js/main.js) | Einstieg: Rendern und Navigation |
+| [js/state.js](js/state.js) | Zustand, Laden und Speichern |
+| [js/history.js](js/history.js), [js/draw.js](js/draw.js) | Auswertung des Verlaufs und Auslosung, ohne Zugriff auf Seite oder Speicher |
+| [js/actions.js](js/actions.js) | alles, was den Zustand ändert |
+| [js/views/](js/views/) | die einzelnen Tabs |
+| [tests/](tests/) | Tests für Auslosung und Zustand |
+
+### Lokal starten
+
+JavaScript-Module lädt der Browser nur über einen Webserver, nicht direkt aus einer Datei. Ein Doppelklick auf `index.html` reicht deshalb nicht.
 
 ```bash
 git clone https://github.com/ursl-shde/kicker-app.git
 cd kicker-app
-open index.html
+npm start
 ```
+
+Danach läuft die App unter http://localhost:8000. `npm start` ruft nur `python3 -m http.server 8000` auf.
+
+### Tests
+
+```bash
+npm test
+```
+
+Die Tests brauchen [Node.js](https://nodejs.org) ab Version 20 und sonst nichts. Auf GitHub laufen sie bei jedem Push automatisch.
+
+### Veröffentlichen
 
 Veröffentlicht wird über GitHub Pages: Was auf `main` liegt, ist kurz darauf live.
