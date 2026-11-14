@@ -1,7 +1,7 @@
 /* ---------- Match card pieces shared by the draw view and the history sheet ---------- */
 import { state, commit, playerName } from '../state.js';
 import { winnerOf, setNoResult } from '../history.js';
-import { escapeHtml, uiState } from '../ui.js';
+import { escapeHtml, uiState, hideSheet } from '../ui.js';
 
 // Rods from Team A's goal (top) to Team B's goal (bottom): owner and number of figures
 const KICKER_RODS = [['a',1],['a',2],['b',3],['a',5],['b',5],['a',3],['b',2],['b',1]];
@@ -133,6 +133,8 @@ export function openResultSheet(id){
   };
   renderSheet();
   document.getElementById('sheetBackdrop').classList.remove('hidden');
+  // Same sheet element as the player details, which may have been scrolled
+  document.getElementById('sheet').scrollTop = 0;
 }
 function renderSheet(){
   const sheet = document.getElementById('sheet');
@@ -170,6 +172,6 @@ function commitSheet(withScore){
   closeSheet();
 }
 function closeSheet(){
-  document.getElementById('sheetBackdrop').classList.add('hidden');
+  hideSheet();
   sheetDraft = null;
 }

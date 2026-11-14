@@ -617,6 +617,7 @@ main{
   cursor:pointer;
 }
 .rank-row.static{cursor:default;}
+button.rank-row{-webkit-tap-highlight-color:transparent;}
 button.rank-row:active{background:var(--surface-2);}
 .rank-no{flex:none;width:1.4em;text-align:center;font-family:var(--font-display);font-weight:700;color:var(--ink-faint);}
 .rank-main{flex:1;display:flex;flex-direction:column;gap:4px;}
@@ -747,6 +748,10 @@ button.rank-row:active{background:var(--surface-2);}
 .pos-table tbody th{font-weight:600;}
 .modal p.note{font-size:.78rem;color:var(--ink-faint);margin:10px 0 0;}
 .sheet-actions.spaced{margin-top:18px;}
+/* Sheet that can be swiped down: grab handle, and no page rubber-banding */
+.modal.sheet{overscroll-behavior:contain;}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--ink-faint);margin:-10px auto 14px;}
+.modal.sheet.settling{transition:transform .2s ease;}
 
 /* Archived players */
 .player-name{flex:1;font-weight:600;color:var(--ink-soft);overflow-wrap:anywhere;}
